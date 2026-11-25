@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>アイカツ！アンコール カード所持枚数チェッカー</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+ font-family:"Hiragino Maru Gothic ProN","Hiragino Maru Gothic Pro","Yu Gothic","YuGothic",Meiryo,sans-serif;
+ color:#333;min-height:100vh;padding-bottom:40px;background:#fff7fd;
+ background-image:linear-gradient(58deg,#ffebfa 26%,transparent 26.5%),linear-gradient(-58deg,#ffebfa 26%,transparent 26.5%),linear-gradient(58deg,transparent 73.5%,#ffebfa 74%),linear-gradient(-58deg,transparent 73.5%,#ffebfa 74%);
+ background-size:52px 80px;background-attachment:fixed
+}
+button{font:inherit;cursor:pointer}
+header{
+ background:linear-gradient(135deg,#fb76b8,#ff8fc7 50%,#ff9ecd);
+ color:#fff;padding:14px 12px;text-align:center;position:sticky;top:0;z-index:100;
+ box-shadow:0 2px 8px rgba(0,0,0,.15)
+}
+h1{font-size:1.2rem;letter-spacing:.03em;margin-bottom:10px}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{border:0;border-radius:999px;height:35px;padding:0 15px;font-weight:700;background:#fff;color:#e85b9d;box-shadow:0 2px 5px rgba(180,70,130,.2)}
+.btn.danger{background:#ff5570;color:#fff}
+.tabs{display:flex;background:rgba(255,255,255,.98);border-bottom:1px solid #f0dce8;position:sticky;top:104px;z-index:90;box-shadow:0 2px 5px rgba(180,100,140,.08)}
+.tab{flex:1;border:0;background:transparent;padding:12px 4px 10px;font-weight:700;color:#999}
+.tab.active{color:#f06aa9;border-bottom:3px solid #fb76b8;background:#fff}
+.stats{text-align:center;padding:9px 8px;font-size:.9rem;font-weight:600;color:#777;background:rgba(255,255,255,.96);border-bottom:1px solid #f0e2ea}
+.stats span{color:#e65b9c;font-weight:700}
+.controls{max-width:900px;margin:auto;background:rgba(255,255,255,.92);padding:10px 8px}
+.row{display:flex;gap:7px;overflow:auto;padding:4px 0;justify-content:center;flex-wrap:wrap}
+.pill{border:1px solid #f0d8e5;background:#fff;border-radius:999px;padding:7px 11px;color:#888;font-weight:700;white-space:nowrap}
+.pill.active{color:#e85b9d;border-color:#f5a1c7;background:#fff5fa}
+.label{text-align:center;color:#999;font-size:.75rem;font-weight:700;margin-top:5px}
+.grid{max-width:1000px;margin:8px auto;padding:0 8px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+@media(min-width:650px){.grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}}
+@media(min-width:1000px){.grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:10px}}
+.card{background:#fff;border:1px solid #eadce4;border-radius:9px;overflow:hidden;box-shadow:0 2px 7px rgba(160,80,120,.12);position:relative}
+.card.unowned img{filter:grayscale(1);opacity:.48}
+.card img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#f6edf2}
+.badge{position:absolute;right:4px;top:4px;background:rgba(255,255,255,.95);border-radius:999px;padding:3px 6px;color:#d95791;font-size:10px;font-weight:800;z-index:2}
+.info{text-align:center;padding:4px 3px 6px}
+.name{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#555}
+.rarity{font-size:8px;color:#a78b97;margin-top:1px}
+.counter{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:4px}
+.counter button{width:25px;height:25px;border-radius:50%;border:1px solid #efc9da;background:#fff;color:#cf4f87;font-size:17px;line-height:1}
+.num{min-width:29px;font-size:13px;font-weight:800;color:#d24f87}
+.num small{font-size:8px;font-weight:500}
+.empty{text-align:center;padding:55px 20px;color:#a18d96}
+.loading{text-align:center;padding:60px 20px;color:#d65b95}
+.modal{display:none;position:fixed;inset:0;background:rgba(50,20,35,.3);z-index:200}
+.modal.open{display:flex;align-items:flex-end}
+.sheet{width:100%;background:#fff;border-radius:20px 20px 0 0;padding:18px;max-height:80vh;overflow:auto}
+.sheet h2{font-size:1rem;color:#d6538b;margin-bottom:10px}
+.sheet p{font-size:.8rem;color:#777;line-height:1.7;margin-bottom:12px}
+.sheet .close{display:block;margin:8px auto 0}
+</style>
+</head>
+<body>
+<header>
+<h1>♡ アイカツ！アンコール ♡<br>カード所持枚数チェッカー</h1>
+<div class="actions">
+<button class="btn danger" id="clear">すべてクリア</button>
+<button class="btn" id="saveInfo">データについて</button>
+</div>
+</header>
+
+<nav class="tabs" id="tabs"><button class="tab active" data-tab="all">すべて</button></nav>
+
+<div class="stats">所持：<span id="ownedKinds">0</span> / <span id="totalKinds">0</span> 種
+（<span id="percent">0.0</span>%）　｜　合計 <span id="totalCards">0</span>枚</div>
+
+<section class="controls">
+<div class="label">♦ カードサイズ</div>
+<div class="row">
+<button class="pill active" data-size="large">大</button><button class="pill" data-size="small">小</button>
+</div>
+<div class="label">♦ パラレルカード</div>
+<div class="row">
+<button class="pill active" data-parallel="hide">非表示</button><button class="pill" data-parallel="show">表示</button>
+</div>
+<div class="label">♦ 所持枚数</div>
+<div class="row" id="countFilters">
+<button class="pill active" data-count="all">すべて</button>
+<button class="pill" data-count="0">0枚</button>
+<button class="pill" data-count="1">1枚</button>
+<button class="pill" data-count="2">2枚</button>
+<button class="pill" data-count="3">3枚</button>
+<button class="pill" data-count="4plus">4枚以上</button>
+</div>
+<div class="label">♦ レアリティ</div>
+<div class="row" id="rarityFilters">
+<button class="pill active" data-rarity="all">すべて</button>
+<button class="pill" data-rarity="PR">PR</button><button class="pill" data-rarity="R">R</button>
+<button class="pill" data-rarity="N">N</button><button class="pill" data-rarity="ER">ER</button>
+</div>
+<div class="label">♦ 未所持カードの表示</div>
+<div class="row">
+<button class="pill active" data-unowned="gray">グレー</button><button class="pill" data-unowned="color">カラー</button>
+</div>
+</section>
+
+<main id="grid" class="grid"><div class="loading">カード情報を読み込んでいます…🎀</div></main>
+
+<div class="modal" id="modal"><div class="sheet">
+<h2>このサイトについて</h2>
+<p>所持枚数はこの端末のブラウザに保存されます。カード下の「＋／−」で1枚ずつ変更できます。枚数表示をタップすると直接入力もできます。</p>
+<p>このページは元の「アイカツ！アンコール カード所持率チェッカー」の構成を参考に、所持枚数を3枚で打ち止めにせず、4枚以上も無制限に記録できるようにした個人利用向けの改造版です。</p>
+<button class="pill close" id="close">閉じる</button>
+</div></div>
+
+<script>
+const DATA_URL="https://raw.githubusercontent.com/min-poke/cardlist-aikatsu-encore/main/cards.js";
+const IMG_BASE="https://raw.githubusercontent.com/min-poke/cardlist-aikatsu-encore/main/";
+const STORE="aikatsu_unlimited_counts_v2";
+let CARDS=[], counts=JSON.parse(localStorage.getItem(STORE)||"{}");
+let tab="all", countFilter="all", rarityFilter="all", parallel=false, unowned="gray", size="large";
+
+function save(){localStorage.setItem(STORE,JSON.stringify(counts))}
+function count(id){let n=Number(counts[id]||0);return Number.isFinite(n)&&n>0?Math.floor(n):0}
+function setCount(id,n){counts[id]=Math.max(0,Math.floor(Number(n)||0));save();render()}
+function img(c){return IMG_BASE+c.image}
+function baseId(c){return c.parallel===true&&c.id.endsWith("_p1")?c.id.slice(0,-3):null}
+function normal(){return CARDS.filter(c=>!c.parallel)}
+function listForTab(){
+ let base=normal().filter(c=>tab==="all"||String(c.series)===String(tab));
+ let out=[];
+ for(const c of base){
+   out.push(c);
+   if(parallel){
+     const p=CARDS.find(x=>x.parallel===true&&baseId(x)===c.id);
+     if(p)out.push(p);
+   }
+ }
+ return out.filter(c=>{
+   let n=count(c.id);
+   if(countFilter==="0"&&n!==0)return false;
+   if(countFilter==="1"&&n!==1)return false;
+   if(countFilter==="2"&&n!==2)return false;
+   if(countFilter==="3"&&n!==3)return false;
+   if(countFilter==="4plus"&&n<4)return false;
+   if(rarityFilter!=="all"&&c.rarity!==rarityFilter)return false;
+   return true;
+ });
+}
+function makeTabs(){
+ const series=[...new Set(normal().map(c=>String(c.series)))].sort((a,b)=>{
+   if(a==="promo")return 1;if(b==="promo")return -1;return Number(a)-Number(b)
+ });
+ const nav=document.getElementById("tabs");
+ nav.innerHTML="";
+ [["all","すべて"],...series.map(s=>[s,s==="promo"?"プロモーション":s+"弾"])].forEach(([id,label])=>{
+   const b=document.createElement("button");b.className="tab"+(id===tab?" active":"");b.dataset.tab=id;b.textContent=label;
+   b.onclick=()=>{tab=id;makeTabs();render()};nav.appendChild(b)
+ });
+}
+function render(){
+ const grid=document.getElementById("grid");grid.innerHTML="";
+ const list=listForTab();
+ grid.style.gridTemplateColumns=size==="large"?"":"";
+ const total=normal().filter(c=>tab==="all"||String(c.series)===String(tab));
+ const ownedKinds=total.filter(c=>count(c.id)>0).length;
+ const totalCopies=total.reduce((s,c)=>s+count(c.id),0);
+ document.getElementById("ownedKinds").textContent=ownedKinds;
+ document.getElementById("totalKinds").textContent=total.length;
+ document.getElementById("percent").textContent=total.length?(ownedKinds/total.length*100).toFixed(1):"0.0";
+ document.getElementById("totalCards").textContent=totalCopies;
+ if(!list.length){grid.innerHTML='<div class="empty">条件に一致するカードがありません。</div>';return}
+ for(const c of list){
+   const n=count(c.id), el=document.createElement("article");
+   el.className="card"+(n===0&&unowned==="gray"?" unowned":"");
+   el.innerHTML=`<div class="badge">${n}枚</div><img src="${img(c)}" alt="${c.name}" loading="lazy"><div class="info"><div class="name">${c.name}</div><div class="rarity">${c.rarity}${c.parallel?" PARALLEL":""}</div><div class="counter"><button class="minus">−</button><span class="num">${n}<small>枚</small></span><button class="plus">＋</button></div></div>`;
+   el.querySelector(".minus").onclick=e=>{e.stopPropagation();setCount(c.id,n-1)};
+   el.querySelector(".plus").onclick=e=>{e.stopPropagation();setCount(c.id,n+1)};
+   el.querySelector(".num").onclick=e=>{e.stopPropagation();const v=prompt("所持枚数",n);if(v!==null)setCount(c.id,v)};
+   el.onclick=()=>setCount(c.id,n+1);
+   grid.appendChild(el);
+ }
+}
+function toggle(selector, key, value){
+ document.querySelectorAll(selector).forEach(b=>b.classList.toggle("active",b.dataset[key]===value))
+}
+document.querySelectorAll("[data-size]").forEach(b=>b.onclick=()=>{size=b.dataset.size;toggle("[data-size]","size",size);document.getElementById("grid").style.maxWidth=size==="large"?"1000px":"1250px";render()});
+document.querySelectorAll("[data-parallel]").forEach(b=>b.onclick=()=>{parallel=b.dataset.parallel==="show";toggle("[data-parallel]","parallel",b.dataset.parallel);render()});
+document.querySelectorAll("[data-count]").forEach(b=>b.onclick=()=>{countFilter=b.dataset.count;toggle("[data-count]","count",countFilter);render()});
+document.querySelectorAll("[data-rarity]").forEach(b=>b.onclick=()=>{rarityFilter=b.dataset.rarity;toggle("[data-rarity]","rarity",rarityFilter);render()});
+document.querySelectorAll("[data-unowned]").forEach(b=>b.onclick=()=>{unowned=b.dataset.unowned;toggle("[data-unowned]","unowned",unowned);render()});
+document.getElementById("clear").onclick=()=>{if(confirm("所持枚数をすべて0枚にしますか？")){counts={};save();render()}};
+document.getElementById("saveInfo").onclick=()=>document.getElementById("modal").classList.add("open");
+document.getElementById("close").onclick=()=>document.getElementById("modal").classList.remove("open");
+
+async function boot(){
+ try{
+   const r=await fetch(DATA_URL,{cache:"no-store"});
+   const text=await r.text();
+   const m=text.match(/const CARDS\s*=\s*(\[[\s\S]*?\]);/);
+   if(!m)throw new Error("カードデータを取得できませんでした");
+   CARDS=Function("return "+m[1])();
+   makeTabs();render();
+ }catch(e){
+   document.getElementById("grid").innerHTML='<div class="empty">カード情報を読み込めませんでした。<br>インターネット接続を確認して、Webサイトとして開いてください。</div>';
+   console.error(e);
+ }
+}
+boot();
+</script>
+</body>
+</html>
